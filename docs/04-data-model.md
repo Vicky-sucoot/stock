@@ -120,7 +120,7 @@
 `portfolio_id?`（空值代表合併）、`month`（YYYY-MM）、`view_currency`、`market_value`、`invested`、`pnl_ex_div`、`pnl_inc_div`、`is_estimated`、`computed_at`
 
 ### app_security（Keychain，不放 SQLite）
-見 [10](10-passcode-recovery.md)。
+見 [10](10-passcode-recovery.md)。另外存放：`face_id_enabled`、`biometric_domain_state`、`data_loss_ack_at`（使用者勾選資料保存說明的時間），以及使用者自備的美股 API 金鑰 `user_quote_api_key`（R2-4）。
 
 ## 2. 後端資料庫（公開資料）
 
