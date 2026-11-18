@@ -1,0 +1,30 @@
+name: web
+
+on:
+  push:
+    paths:
+      - "web/**"
+      - "core/testcases/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "core/testcases/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # 包含 core/testcases 共用案例（與 Python、Swift 相同）
+      - run: npm test
+      - run: npm run build
