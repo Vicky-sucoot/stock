@@ -189,3 +189,53 @@ class Announcement(Base):
     license_basis: Mapped[str] = mapped_column(String(32))
     raw_payload_id: Mapped[int | None] = mapped_column(ForeignKey("raw_payload.id"), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class SignalAssessment(Base):
+    """每則訊息的判定結果（快取：同一則公告不重複判定、不重複呼叫 LLM）。"""
+
+    __tablename__ = "signal_assessment"
+    __table_args__ = (UniqueConstraint("announcement_id", "rule_version", name="uq_assessment_item_rule"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    announcement_id: Mapped[int] = mapped_column(ForeignKey("announcement.id"), index=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    polarity: Mapped[int] = mapped_column(Integer)
+    confidence: Mapped[Decimal] = mapped_column(ExactDecimal)
+    relevance: Mapped[Decimal] = mapped_column(ExactDecimal)
+    has_negation: Mapped[bool] = mapped_column(Boolean)
+    method: Mapped[str] = mapped_column(String(16))
+    rationale: Mapped[str] = mapped_column(Text)
+    flags: Mapped[str] = mapped_column(Text, default="[]")  # JSON 陣列
+    model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    rule_version: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class WatchlistRun(Base):
+    __tablename__ = "watchlist_run"
+    run_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    data_date: Mapped[date] = mapped_column(Date, index=True)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(16))  # OK / PARTIAL / FAILED
+    coverage: Mapped[str] = mapped_column(Text)  # JSON
+    rule_version: Mapped[str] = mapped_column(String(32))
+    params: Mapped[str] = mapped_column(Text)  # JSON
+    stats: Mapped[str] = mapped_column(Text, default="{}")  # JSON：筆數、LLM 呼叫數等
+
+
+class WatchlistEntry(Base):
+    __tablename__ = "watchlist_entry"
+    run_id: Mapped[str] = mapped_column(ForeignKey("watchlist_run.run_id"), primary_key=True)
+    list_type: Mapped[str] = mapped_column(String(16), primary_key=True)  # BULLISH / BEARISH / UNCERTAIN
+    rank: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(16), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    board: Mapped[str] = mapped_column(String(8))
+    score_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score_foreign: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score_news: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reason_short: Mapped[str] = mapped_column(Text)
+    flags: Mapped[str] = mapped_column(Text, default="[]")  # JSON
+    evidence: Mapped[str] = mapped_column(Text)  # JSON：外資原始列、訊息、計算步驟

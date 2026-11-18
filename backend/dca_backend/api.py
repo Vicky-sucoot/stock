@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -15,8 +16,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
 from .db import make_engine, make_session_factory
-from .models import DailyQuote, ForeignFlowDaily, JobRun, MarketInstrument
+from .models import DailyQuote, ForeignFlowDaily, JobRun, MarketInstrument, WatchlistEntry, WatchlistRun
 from .sources import SOURCES
+from .watchlist.engine import export_run
 
 SYMBOL_RE = re.compile(r"^TW:[0-9A-Z]{4,6}$")
 MAX_SYMBOLS = 200
@@ -112,6 +114,30 @@ def create_app(session_factory: sessionmaker[Session]) -> FastAPI:
              "attribution": SOURCES[r.source_id].attribution,
              "fetched_at": r.fetched_at.isoformat()} for r in rows
         ]}
+
+    @app.get("/v1/watchlist/latest")
+    def watchlist_latest(session: Session = Depends(get_session)):
+        """最新一次觀察名單（第五階段 App 使用）。每個標的的完整證據另以明細端點取得。"""
+        run = session.scalar(select(WatchlistRun).where(WatchlistRun.finished_at.is_not(None))
+                             .order_by(WatchlistRun.data_date.desc(), WatchlistRun.finished_at.desc()).limit(1))
+        if run is None:
+            raise HTTPException(404, "no watchlist yet")
+        out = export_run(session, run.run_id)
+        for e in out["entries"]:
+            e.pop("evidence")
+        return out
+
+    @app.get("/v1/watchlist/{run_id}/entries/{symbol}")
+    def watchlist_entry(run_id: str, symbol: str, session: Session = Depends(get_session)):
+        rows = session.scalars(select(WatchlistEntry).where(WatchlistEntry.run_id == run_id,
+                                                            WatchlistEntry.symbol == symbol.upper())).all()
+        if not rows:
+            raise HTTPException(404, "entry not found")
+        e = rows[0]
+        return {"run_id": run_id, "list_type": e.list_type, "rank": e.rank, "symbol": e.symbol, "name": e.name,
+                "board": e.board, "score_total": e.score_total, "score_foreign": e.score_foreign,
+                "score_news": e.score_news, "reason_short": e.reason_short, "flags": json.loads(e.flags),
+                "evidence": json.loads(e.evidence)}
 
     @app.get("/v1/status")
     def status(session: Session = Depends(get_session)):

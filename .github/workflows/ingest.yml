@@ -59,6 +59,15 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
           exit 0
 
+      # 觀察名單（第四階段，內部驗證用）：以全部累積的原始檔重建資料庫後計算；LLM 預設停用
+      - name: Build watchlist from accumulated raw data
+        working-directory: backend
+        env:
+          DCA_DB_URL: sqlite:///${{ runner.temp }}/replay.db
+        run: |
+          python -m dca_backend.replay --raw-dir "$GITHUB_WORKSPACE/data-branch/raw" --init-db
+          python -m dca_backend.watchlist.engine --export-dir "$GITHUB_WORKSPACE/data-branch/watchlist" || echo "watchlist not built"
+
       - name: Commit to data branch
         working-directory: data-branch
         run: |

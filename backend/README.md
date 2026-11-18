@@ -68,9 +68,16 @@ CRON_TZ=Asia/Taipei
 - 排程只會在**預設分支**上的 workflow 檔生效：請確認倉庫預設分支是 `main`
 - 之後換成正式主機時，用 replay 匯入這些原始檔，歷史就不會中斷
 
+## 每日觀察名單（第四階段）
+```bash
+python -m dca_backend.watchlist.engine --export-dir ./data/watchlist
+```
+- 依 docs/06 計算外資分（上櫃）與公司重大訊息分，產生「偏多／偏空／衝突或資料不足」三份清單；每筆附外資原始數據、訊息來源與計算過程
+- LLM 預設停用；完成 docs/08 L8 後設定 `DCA_LLM_ENABLED=1`，以及後端的 Anthropic 憑證（只放在伺服器的 Secret）
+- 內部檢視：`pip install streamlit && streamlit run tools/watchlist_viewer.py -- --dir <data 分支>/watchlist`
+
 ## 尚未實作（後續階段）
 - 上市（TWSE）個股外資資料：官方管道待查（docs/07 V1）
 - 交易日曆、匯率、美股與日股、基金淨值
-- 觀察名單評分（第四階段）
 - 每台裝置的速率限制與 App Attest（第六階段）
 - 正式部署主機（目前以 GitHub Actions 暫代排程）

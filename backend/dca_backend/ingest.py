@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
@@ -179,7 +180,8 @@ def ingest_announcements(session: Session, rows: list[dict], source: Source, boa
         symbol = _req(r, f["symbol"], source).strip()
         ann_date = roc_date(_req(r, "發言日期", source))
         published = taipei_datetime(ann_date, roc_time(r.get("發言時間")))
-        subject = (_req(r, "主旨", source) or "").strip()
+        # 官方資料以 HTML 實體表示部分罕用字（實測如 &#12070;），先還原
+        subject = html.unescape(_req(r, "主旨", source) or "").strip()
         if not symbol or published is None or not subject:
             res.skipped += 1
             continue
@@ -189,9 +191,9 @@ def ingest_announcements(session: Session, rows: list[dict], source: Source, boa
         if exists is None:
             session.add(Announcement(
                 source_id=source.id, board=board, symbol=symbol,
-                company_name=_req(r, f["name"], source).strip(), published_at=published,
+                company_name=html.unescape(_req(r, f["name"], source)).strip(), published_at=published,
                 subject=subject, clause=(r.get("符合條款") or None), fact_date=roc_date(r.get("事實發生日")),
-                description=r.get("說明"), source_url=source.endpoint, content_hash=h,
+                description=html.unescape(r["說明"]) if r.get("說明") else None, source_url=source.endpoint, content_hash=h,
                 license_basis="GOV_OPEN_DATA", raw_payload_id=payload.id, fetched_at=now,
             ))
             res.rows += 1
