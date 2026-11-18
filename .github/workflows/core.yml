@@ -5,11 +5,13 @@ on:
     paths:
       - "core/**"
       - "ios/DCACore/**"
+      - "ios/DCAKit/**"
       - ".github/workflows/core.yml"
   pull_request:
     paths:
       - "core/**"
       - "ios/DCACore/**"
+      - "ios/DCAKit/**"
       - ".github/workflows/core.yml"
 
 jobs:
@@ -33,4 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift --version
       - working-directory: ios/DCACore
+        run: swift test
+      # App 邏輯（密碼與復原碼、資料保存、定期定額、行情更新）；SwiftUI 畫面需在 Xcode 建置
+      - working-directory: ios/DCAKit
         run: swift test

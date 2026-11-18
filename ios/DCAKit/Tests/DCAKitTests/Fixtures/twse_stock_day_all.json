@@ -1,0 +1,54 @@
+[
+ {
+  "Date": "1151117",
+  "Code": "00400A",
+  "Name": "主動國泰動能高息",
+  "TradeVolume": "63785513",
+  "TradeValue": "723098265",
+  "OpeningPrice": "11.37",
+  "HighestPrice": "11.72",
+  "LowestPrice": "11.18",
+  "ClosingPrice": "11.22",
+  "Change": "-0.5100",
+  "Transaction": "13521"
+ },
+ {
+  "Date": "1151117",
+  "Code": "0050",
+  "Name": "元大台灣50",
+  "TradeVolume": "408719094",
+  "TradeValue": "38776983850",
+  "OpeningPrice": "94.55",
+  "HighestPrice": "97.45",
+  "LowestPrice": "93.25",
+  "ClosingPrice": "94.00",
+  "Change": "-2.4500",
+  "Transaction": "535571"
+ },
+ {
+  "Date": "1151117",
+  "Code": "2330",
+  "Name": "台積電",
+  "TradeVolume": "61610981",
+  "TradeValue": "135465361736",
+  "OpeningPrice": "2195.00",
+  "HighestPrice": "2270.00",
+  "LowestPrice": "2155.00",
+  "ClosingPrice": "2170.00",
+  "Change": "-45.0000",
+  "Transaction": "371462"
+ },
+ {
+  "Date": "1151117",
+  "Code": "00625K",
+  "Name": "富邦上証+R",
+  "TradeVolume": "",
+  "TradeValue": "",
+  "OpeningPrice": "",
+  "HighestPrice": "",
+  "LowestPrice": "",
+  "ClosingPrice": "",
+  "Change": "0.0000",
+  "Transaction": ""
+ }
+]
