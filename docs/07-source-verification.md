@@ -10,7 +10,7 @@
 |---|---|---|
 | OpenAPI 規格 | https://openapi.twse.com.tw/v1/swagger.json（標題「臺灣證券交易所 OpenAPI」1.0，共 143 個路徑） | ✅ 已查核 |
 | 授權 | 規格說明連到「使用條款」https://www.twse.com.tw/zh/page/terms/use.html 與「授權說明網址」https://data.gov.tw/license（政府資料開放授權條款） | ✅ 連結已查核；**TWSE 使用條款內文無法取得**（網站對自動化請求回應安全性阻擋頁或中斷連線）→ 待查 |
-| 上市個股收盤行情 | `GET /v1/exchangeReport/STOCK_DAY_ALL`：欄位 Date（民國年 YYYMMDD）、Code、Name、TradeVolume、TradeValue、OpeningPrice、HighestPrice、LowestPrice、ClosingPrice、Change、Transaction。**只回傳最新一個交易日** | ✅ 已查核。範例：台灣時間 11/19 00 時取得的資料日為 1151117，比 TPEx 晚一天 → 更新時間待查 |
+| 上市個股收盤行情 | `GET /v1/exchangeReport/STOCK_DAY_ALL`：欄位 Date（民國年 YYYMMDD）、Code、Name、TradeVolume、TradeValue、OpeningPrice、HighestPrice、LowestPrice、ClosingPrice、Change、Transaction。**只回傳最新一個交易日** | ✅ 已查核。**實測（2026-11-19 00:51 台灣時間）**：資料日仍為 1151117，同時 TPEx 已是 1151118 → TWSE OpenAPI 收盤行情至少落後一個交易日，確切更新時間待查（V3） |
 | 公司重大訊息（上市） | `GET /v1/opendata/t187ap04_L`：欄位 出表日期、發言日期、發言時間、公司代號、公司名稱、主旨、符合條款、事實發生日、說明 | ✅ 已查核 |
 | 外資持股相關 | `/v1/fund/MI_QFIIS_cat`（類股持股比率）、`/v1/fund/MI_QFIIS_sort_20`（持股前 20 名） | ✅ 已查核；**不是每日個股買賣超** |
 | **個股三大法人或外資買賣超日報（T86／TWT38U）** | **OpenAPI 規格中沒有這兩項**。網站報表路徑 `https://www.twse.com.tw/rwd/zh/fund/T86`、`/fund/TWT38U` 對自動化請求回應「因為安全性考量，您所執行的頁面無法呈現」 | ❌ **P0 風險**：取得方式、授權、更新時間、歷史範圍都待查。可能的選項：①向 TWSE 詢問 OpenAPI 是否會提供或有其他官方管道；②申請 TWSE 資訊授權或購買盤後資訊；③確認網站報表是否允許自動下載。**確認前，上市標的一律列為「資料不足」** |
