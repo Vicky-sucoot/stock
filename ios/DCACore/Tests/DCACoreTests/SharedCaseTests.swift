@@ -84,14 +84,24 @@ final class SharedCaseTests: XCTestCase {
                           autoDataDate: date(p["auto_data_date"]))
     }
 
-    func occDict(_ o: Occurrence) -> NSDictionary {
-        [
-            "period_key": o.periodKey,
-            "nominal_date": o.nominalDate.iso,
-            "scheduled_date": o.scheduledDate.iso,
-            "adjust_reasons": o.adjustReasons,
-            "merged_keys": o.mergedKeys,
-        ]
+    struct OccRow: Equatable, CustomStringConvertible {
+        var periodKey: String
+        var nominal: String
+        var scheduled: String
+        var reasons: [String]
+        var merged: [String]
+        var description: String { "\(periodKey) \(nominal)->\(scheduled) \(reasons) \(merged)" }
+    }
+
+    func occRow(_ o: Occurrence) -> OccRow {
+        OccRow(periodKey: o.periodKey, nominal: o.nominalDate.iso, scheduled: o.scheduledDate.iso,
+               reasons: o.adjustReasons, merged: o.mergedKeys)
+    }
+
+    func occRow(_ j: J) -> OccRow {
+        OccRow(periodKey: j["period_key"] as? String ?? "", nominal: j["nominal_date"] as? String ?? "",
+               scheduled: j["scheduled_date"] as? String ?? "",
+               reasons: j["adjust_reasons"] as? [String] ?? [], merged: j["merged_keys"] as? [String] ?? [])
     }
 
     // MARK: - schedule
@@ -127,8 +137,8 @@ final class SharedCaseTests: XCTestCase {
                 existingKeys: Set(c["existing_keys"] as? [String] ?? []),
                 since: date(c["since"])
             )
-            let expect = (c["expect"] as! [J]).map { NSDictionary(dictionary: $0) }
-            XCTAssertEqual(got.map(occDict), expect, id)
+            let expect: [OccRow] = (c["expect"] as! [J]).map { occRow($0) }
+            XCTAssertEqual(got.map { occRow($0) }, expect, id)
         }
     }
 
@@ -141,8 +151,8 @@ final class SharedCaseTests: XCTestCase {
                 today: date(c["today"])!,
                 count: c["count"] as! Int
             )
-            let expect = (c["expect"] as! [J]).map { NSDictionary(dictionary: $0) }
-            XCTAssertEqual(got.map(occDict), expect, c["id"] as! String)
+            let expect: [OccRow] = (c["expect"] as! [J]).map { occRow($0) }
+            XCTAssertEqual(got.map { occRow($0) }, expect, c["id"] as! String)
         }
     }
 

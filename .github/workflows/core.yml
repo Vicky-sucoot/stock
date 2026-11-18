@@ -24,8 +24,11 @@ jobs:
       - working-directory: core/python
         run: python -m pytest -q --cov=dca_core --cov-branch --cov-report=term-missing --cov-fail-under=90
 
+  # 私人倉庫的 macOS 執行時數可能不足，改用 Linux 上的官方 Swift 容器驗證計算核心。
+  # iOS 專屬功能（Keychain、UI）之後在 Xcode 上驗證。
   swift:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
+    container: swift:6.0
     steps:
       - uses: actions/checkout@v4
       - run: swift --version
