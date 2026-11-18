@@ -59,9 +59,18 @@ CRON_TZ=Asia/Taipei
 - **TWSE `STOCK_DAY_ALL` 的資料日仍是 11/17，TPEx 已是 11/18**，可見 TWSE OpenAPI 的收盤行情至少落後一個交易日；App 必須顯示資料日
 - TPEx 三大法人端點回應約 8.6 秒
 
+## 免費累積：GitHub Actions + data 分支
+目前還沒有正式主機，所以先用 `.github/workflows/ingest.yml`（免費）累積資料：
+- 平日在台灣時間 08:40、15:40、16:40、17:40、19:40、21:40 各執行一次 `tw_daily`（GitHub 排程可能延遲）
+- 原始回應存進 `data` 分支的 `raw/`（gzip，只新增、不改寫；同一份內容不重複存），每次結果附加到 `runs/<年-月>.jsonl`
+- 不把 SQLite 資料庫放進 git，避免倉庫膨脹；要用資料時執行 `python -m dca_backend.replay --raw-dir <data 分支>/raw --init-db` 重建
+- 預估：每個交易日約 250 KB 原始資料（一年約 60 MB）；每月約 200～300 分鐘 Actions 時數（私人倉庫免費額度內，實際依 GitHub 方案而定）
+- 排程只會在**預設分支**上的 workflow 檔生效：請確認倉庫預設分支是 `main`
+- 之後換成正式主機時，用 replay 匯入這些原始檔，歷史就不會中斷
+
 ## 尚未實作（後續階段）
 - 上市（TWSE）個股外資資料：官方管道待查（docs/07 V1）
 - 交易日曆、匯率、美股與日股、基金淨值
 - 觀察名單評分（第四階段）
 - 每台裝置的速率限制與 App Attest（第六階段）
-- 正式部署與排程主機
+- 正式部署主機（目前以 GitHub Actions 暫代排程）

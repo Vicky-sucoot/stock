@@ -1,0 +1,78 @@
+name: ingest
+
+# 免費方案：用 GitHub Actions 在平日定時擷取官方 OpenAPI，
+# 把原始回應（只新增、不改寫）累積到 data 分支。資料庫可隨時用 dca_backend.replay 重建。
+# 排程只會在預設分支上的這個檔案生效；GitHub 的排程可能延遲數分鐘到數十分鐘。
+
+on:
+  schedule:
+    # 台灣時間 = UTC+8，週一到週五
+    - cron: "40 0 * * 1-5"   # 08:40：前一晚與清晨的重大訊息
+    - cron: "40 7 * * 1-5"   # 15:40
+    - cron: "40 8 * * 1-5"   # 16:40
+    - cron: "40 9 * * 1-5"   # 17:40
+    - cron: "40 11 * * 1-5"  # 19:40
+    - cron: "40 13 * * 1-5"  # 21:40：當日最後一次
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out data branch
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git fetch --depth=1 origin data
+            git worktree add --detach data-branch FETCH_HEAD
+          else
+            git worktree add --detach data-branch
+            git -C data-branch switch --orphan data
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e backend
+
+      - name: Fetch official OpenAPI data
+        id: run
+        working-directory: backend
+        env:
+          DCA_DB_URL: sqlite:///${{ runner.temp }}/dca.db
+          DCA_RAW_DIR: ${{ github.workspace }}/data-branch/raw
+        run: |
+          set +e
+          python -m dca_backend.jobs tw_daily --init-db \
+            --run-log "$GITHUB_WORKSPACE/data-branch/runs/$(date -u +%Y-%m).jsonl"
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Commit to data branch
+        working-directory: data-branch
+        run: |
+          [ -f README.md ] || cp ../backend/data-branch-README.md README.md
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing new"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "data: tw_daily $(date -u +%Y-%m-%dT%H:%MZ) exit=${{ steps.run.outputs.code }}"
+          git push origin HEAD:refs/heads/data
+
+      - name: Fail when every source failed
+        if: steps.run.outputs.code == '1'
+        run: exit 1

@@ -29,6 +29,17 @@ class FetchResult:
     payload: RawPayload
 
 
+def find_raw_file(raw_dir, source_id: str, sha: str) -> str | None:
+    """在 raw_dir/<source_id>/*/ 中找同一 SHA-256 的檔案（檔名含前 12 碼，再以內容確認）。"""
+    base = raw_dir / source_id
+    if not base.is_dir():
+        return None
+    for p in sorted(base.glob(f"*/*_{sha[:12]}.json.gz")):
+        if hashlib.sha256(gzip.decompress(p.read_bytes())).hexdigest() == sha:
+            return p.relative_to(raw_dir).as_posix()
+    return None
+
+
 def _retryable(status: int) -> bool:
     return status == 429 or status >= 500
 
@@ -116,10 +127,16 @@ class Fetcher:
         if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
             raise FetchError(f"{source.id}: expected a JSON array of objects")
         sha = hashlib.sha256(body).hexdigest()
-        rel = f"{source.id}/{fetched_at:%Y%m%d}/{fetched_at:%H%M%S}_{sha[:12]}.json.gz"
-        path = self.settings.raw_dir / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(gzip.compress(body))
+        # 同一份內容已經存過（例如一天內重跑多次）就沿用，不重複寫檔：原始資料目錄只會新增
+        existing = find_raw_file(self.settings.raw_dir, source.id, sha)
+        if existing is not None:
+            rel = existing
+        else:
+            rel = f"{source.id}/{fetched_at:%Y%m%d}/{fetched_at:%H%M%S}_{sha[:12]}.json.gz"
+            path = self.settings.raw_dir / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # mtime=0：同樣內容產生同樣的 gzip 位元組，方便 git 去重複
+            path.write_bytes(gzip.compress(body, mtime=0))
         payload = RawPayload(
             source_id=source.id,
             url=url,

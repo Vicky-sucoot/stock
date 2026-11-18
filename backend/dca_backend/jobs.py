@@ -11,10 +11,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 import httpx
@@ -143,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="dca_backend.jobs")
     p.add_argument("job", choices=sorted(JOBS))
     p.add_argument("--init-db", action="store_true", help="原型用：直接建立資料表（正式環境請用 alembic upgrade head）")
+    p.add_argument("--run-log", type=Path, default=None, help="把本次結果以一行 JSON 附加到此檔（GitHub Actions 累積用）")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.from_env()
@@ -153,7 +156,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{run.job}: {run.status} data_date={run.data_date} rows={run.rows_upserted}")
     if run.message:
         print(run.message)
+    if args.run_log is not None:
+        append_run_log(args.run_log, run)
     return exit_code(run.status)
+
+
+def append_run_log(path: Path, run: JobRun) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = {
+        "job": run.job, "status": run.status,
+        "started_at": run.started_at.isoformat(), "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "data_date": run.data_date.isoformat() if run.data_date else None,
+        "rows": run.rows_upserted, "message": run.message,
+    }
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":  # pragma: no cover
