@@ -140,7 +140,7 @@ A001 明細頁會顯示：近 10 日外資原始數據表、TPEx OpenAPI 端點�
 - 程式：`backend/dca_backend/watchlist/`（`params.py` 門檻、`foreign.py` 外資分、`signals.py` 規則判定、去重複、時效窗口、訊息分、`llm.py` LLM 介面、`engine.py` 名單與證據）；規則版本 `2026.11-draft2`
 - 資料表：`signal_assessment`（判定快取）、`watchlist_run`、`watchlist_entry`（Alembic 0002）
 - API：`/v1/watchlist/latest`、`/v1/watchlist/{run_id}/entries/{symbol}`
-- 免費累積：GitHub Actions 每次擷取後，用全部原始檔重建資料庫並計算名單，寫入 data 分支 `watchlist/<資料日>.json`
+- 免費累積：GitHub Actions 每次擷取後，用全部原始檔重建資料庫並計算名單，**只作流程檢查、不發布**（倉庫為公開，未完成 docs/08 L1 法遵確認前不得公開個股分析）
 - 內部檢視：`backend/tools/watchlist_viewer.py`（Streamlit）
 - 測試：§5 範例逐項驗證；規則判定、否定語句、澄清、去重複、時效、LLM 輸出驗證、提示詞注入、端對端名單與證據
 

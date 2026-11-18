@@ -74,7 +74,9 @@ python -m dca_backend.watchlist.engine --export-dir ./data/watchlist
 ```
 - 依 docs/06 計算外資分（上櫃）與公司重大訊息分，產生「偏多／偏空／衝突或資料不足」三份清單；每筆附外資原始數據、訊息來源與計算過程
 - LLM 預設停用；完成 docs/08 L8 後設定 `DCA_LLM_ENABLED=1`，以及後端的 Anthropic 憑證（只放在伺服器的 Secret）
-- 內部檢視：`pip install streamlit && streamlit run tools/watchlist_viewer.py -- --dir <data 分支>/watchlist`
+- **本倉庫是公開的**：名單結果不寫入 data 分支、不公開發布（docs/08 L1）。要檢視時，在自己的電腦用 data 分支的原始檔重建：
+  `python -m dca_backend.replay --raw-dir <data 分支>/raw --init-db && python -m dca_backend.watchlist.engine --export-dir ./wl`
+- 內部檢視：`pip install streamlit && streamlit run tools/watchlist_viewer.py -- --dir ./wl`
 
 ## 尚未實作（後續階段）
 - 上市（TWSE）個股外資資料：官方管道待查（docs/07 V1）
