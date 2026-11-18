@@ -1,0 +1,33 @@
+name: core
+
+on:
+  push:
+    paths:
+      - "core/**"
+      - "ios/DCACore/**"
+      - ".github/workflows/core.yml"
+  pull_request:
+    paths:
+      - "core/**"
+      - "ios/DCACore/**"
+      - ".github/workflows/core.yml"
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pytest-cov
+      - working-directory: core/python
+        run: python -m pytest -q --cov=dca_core --cov-branch --cov-report=term-missing --cov-fail-under=90
+
+  swift:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - working-directory: ios/DCACore
+        run: swift test

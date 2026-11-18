@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "note": "金額與數量以字串表示的十進位數；比較時兩邊都四捨六入（銀行家捨入）到小數 8 位。",
+  "cases": [
+    {
+      "id": "L01",
+      "desc": "AC-7：移動平均成本與已實現損益",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "100", "quantity": "10", "gross_amount": "1000", "fee": "20"},
+        {"type": "BUY", "trade_date": "2026-02-05", "currency": "TWD", "price": "120", "quantity": "10", "gross_amount": "1200", "fee": "20"},
+        {"type": "SELL", "trade_date": "2026-03-05", "currency": "TWD", "price": "130", "quantity": "5", "gross_amount": "650", "fee": "20", "tax": "1.95"}
+      ],
+      "expect": {"quantity": "15", "cost_basis": "1680", "avg_cost": "112", "reinvested_cost": "0", "invested_current": "1680", "historical_invested": "2240", "realized_pnl": "68.05", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "130"}
+    },
+    {
+      "id": "L02",
+      "desc": "T5：碎股、零股的買入與部分賣出",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "USD", "price": "100", "quantity": "0.25", "gross_amount": "25"},
+        {"type": "BUY", "trade_date": "2026-01-06", "currency": "USD", "price": "120", "quantity": "0.75", "gross_amount": "90", "fee": "1"},
+        {"type": "SELL", "trade_date": "2026-01-07", "currency": "USD", "price": "130", "quantity": "0.4", "gross_amount": "52", "fee": "0.5"}
+      ],
+      "expect": {"quantity": "0.6", "cost_basis": "69.6", "avg_cost": "116", "reinvested_cost": "0", "invested_current": "69.6", "historical_invested": "116", "realized_pnl": "5.1", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "130"}
+    },
+    {
+      "id": "L03",
+      "desc": "數量精度到小數 6 位",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "USD", "price": "250", "quantity": "0.123456", "gross_amount": "30.864"}
+      ],
+      "expect": {"quantity": "0.123456", "cost_basis": "30.864", "avg_cost": "250", "reinvested_cost": "0", "invested_current": "30.864", "historical_invested": "30.864", "realized_pnl": "0", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "250"}
+    },
+    {
+      "id": "L04",
+      "desc": "T6：1 拆 4 後賣出一半",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "400", "quantity": "10", "gross_amount": "4000", "fee": "10"},
+        {"type": "SPLIT_ADJUST", "trade_date": "2026-02-01", "currency": "TWD", "quantity": "4"},
+        {"type": "SELL", "trade_date": "2026-03-01", "currency": "TWD", "price": "110", "quantity": "20", "gross_amount": "2200", "fee": "5"}
+      ],
+      "expect": {"quantity": "20", "cost_basis": "2005", "avg_cost": "100.25", "reinvested_cost": "0", "invested_current": "2005", "historical_invested": "4010", "realized_pnl": "190", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "110"}
+    },
+    {
+      "id": "L05",
+      "desc": "T7：美股股利預扣 30% 後再投入，之後賣出一半",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "USD", "price": "200", "quantity": "10", "gross_amount": "2000", "fee": "1"},
+        {"type": "DIVIDEND_REINVEST", "trade_date": "2026-02-15", "currency": "USD", "price": "200", "quantity": "0.035", "gross_amount": "10", "tax": "3"},
+        {"type": "SELL", "trade_date": "2026-03-01", "currency": "USD", "price": "210", "quantity": "5.0175", "gross_amount": "1053.675", "fee": "1"}
+      ],
+      "expect": {"quantity": "5.0175", "cost_basis": "1004", "avg_cost": "200.0996512207274539113104135", "reinvested_cost": "3.5", "invested_current": "1000.5", "historical_invested": "2001", "realized_pnl": "48.675", "dividends_net": "7", "standalone_fees": "0", "last_trade_price": "210"}
+    },
+    {
+      "id": "L06",
+      "desc": "T8：全部賣出後再買入，平均成本重新起算",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "50", "quantity": "100", "gross_amount": "5000", "fee": "20"},
+        {"type": "SELL", "trade_date": "2026-02-05", "currency": "TWD", "price": "60", "quantity": "100", "gross_amount": "6000", "fee": "20", "tax": "18"},
+        {"type": "BUY", "trade_date": "2026-03-05", "currency": "TWD", "price": "55", "quantity": "50", "gross_amount": "2750", "fee": "20"}
+      ],
+      "expect": {"quantity": "50", "cost_basis": "2770", "avg_cost": "55.4", "reinvested_cost": "0", "invested_current": "2770", "historical_invested": "7790", "realized_pnl": "942", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "55"}
+    },
+    {
+      "id": "L07",
+      "desc": "台股現金股利扣二代健保與匯費、股票股利、獨立費用",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "50", "quantity": "1000", "gross_amount": "50000", "fee": "71"},
+        {"type": "DIVIDEND_CASH", "trade_date": "2026-07-20", "currency": "TWD", "gross_amount": "3000", "fee": "10", "other_cost": "63"},
+        {"type": "DIVIDEND_STOCK", "trade_date": "2026-08-20", "currency": "TWD", "quantity": "50"},
+        {"type": "FEE", "trade_date": "2026-09-01", "currency": "TWD", "gross_amount": "100"}
+      ],
+      "expect": {"quantity": "1050", "cost_basis": "50071", "avg_cost": "47.68666666666666666666666667", "reinvested_cost": "0", "invested_current": "50071", "historical_invested": "50071", "realized_pnl": "0", "dividends_net": "2927", "standalone_fees": "100", "last_trade_price": "50"}
+    },
+    {
+      "id": "L08",
+      "desc": "A5：複委託手續費以台幣收取，用交易日匯率換算成美元",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "USD", "price": "100", "quantity": "10", "gross_amount": "1000", "fee": "30", "cost_currency": "TWD", "fx_rate_at_trade": "30"}
+      ],
+      "expect": {"quantity": "10", "cost_basis": "1001", "avg_cost": "100.1", "reinvested_cost": "0", "invested_current": "1001", "historical_invested": "1001", "realized_pnl": "0", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "100"}
+    },
+    {
+      "id": "L09",
+      "desc": "as_of 之後的交易不計入",
+      "as_of": "2026-01-31",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "100", "quantity": "10", "gross_amount": "1000"},
+        {"type": "BUY", "trade_date": "2026-02-05", "currency": "TWD", "price": "120", "quantity": "10", "gross_amount": "1200"}
+      ],
+      "expect": {"quantity": "10", "cost_basis": "1000", "avg_cost": "100", "reinvested_cost": "0", "invested_current": "1000", "historical_invested": "1000", "realized_pnl": "0", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "100"}
+    },
+    {
+      "id": "L10",
+      "desc": "同一天依 seq 排序：先買後賣（輸入順序相反）",
+      "transactions": [
+        {"type": "SELL", "trade_date": "2026-01-05", "currency": "TWD", "price": "110", "quantity": "5", "gross_amount": "550", "seq": 2},
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "100", "quantity": "10", "gross_amount": "1000", "seq": 1}
+      ],
+      "expect": {"quantity": "5", "cost_basis": "500", "avg_cost": "100", "reinvested_cost": "0", "invested_current": "500", "historical_invested": "1000", "realized_pnl": "50", "dividends_net": "0", "standalone_fees": "0", "last_trade_price": "110"}
+    },
+    {
+      "id": "L11",
+      "desc": "賣出超過持有數量時報錯",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "TWD", "price": "100", "quantity": "5", "gross_amount": "500"},
+        {"type": "SELL", "trade_date": "2026-01-06", "currency": "TWD", "price": "100", "quantity": "6", "gross_amount": "600"}
+      ],
+      "expect_error": "OVERSELL"
+    },
+    {
+      "id": "L12",
+      "desc": "費用幣別不同且沒有交易日匯率時報錯（需要 fallback）",
+      "transactions": [
+        {"type": "BUY", "trade_date": "2026-01-05", "currency": "USD", "price": "100", "quantity": "1", "gross_amount": "100", "fee": "30", "cost_currency": "TWD"}
+      ],
+      "expect_error": "FX_REQUIRED"
+    }
+  ]
+}

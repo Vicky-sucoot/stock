@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "note": "匯率以 1 單位幣別 = ? TWD 表示。比較時四捨六入到小數 8 位。",
+  "holdings": [
+    {"portfolio_id": "P1", "instrument_id": "TW:0050", "currency": "TWD", "transactions": [
+      {"type": "BUY", "trade_date": "2026-03-02", "currency": "TWD", "price": "140", "quantity": "100", "gross_amount": "14000", "fee": "20"}
+    ]},
+    {"portfolio_id": "P2", "instrument_id": "TW:0050", "currency": "TWD", "transactions": [
+      {"type": "BUY", "trade_date": "2026-04-01", "currency": "TWD", "price": "145", "quantity": "200", "gross_amount": "29000", "fee": "41"}
+    ]},
+    {"portfolio_id": "P1", "instrument_id": "US:AAPL", "currency": "USD", "transactions": [
+      {"type": "BUY", "trade_date": "2026-03-02", "currency": "USD", "price": "200", "quantity": "10", "gross_amount": "2000", "fee": "1"},
+      {"type": "DIVIDEND_CASH", "trade_date": "2026-05-15", "currency": "USD", "gross_amount": "5", "tax": "1.5"}
+    ]},
+    {"portfolio_id": "P2", "instrument_id": "JP:7203", "currency": "JPY", "transactions": [
+      {"type": "BUY", "trade_date": "2026-03-02", "currency": "JPY", "price": "3000", "quantity": "100", "gross_amount": "300000"}
+    ]},
+    {"portfolio_id": "P3", "instrument_id": "TW:2330", "currency": "TWD", "include_in_overview": false, "transactions": [
+      {"type": "BUY", "trade_date": "2026-03-02", "currency": "TWD", "price": "1000", "quantity": "1", "gross_amount": "1000"}
+    ]}
+  ],
+  "prices": {
+    "TW:0050": {"auto_value": "150", "auto_data_date": "2026-11-17", "overrides": [
+      {"value": "155", "effective_date": "2026-11-01", "set_at": "2026-11-01T10:00:00+08:00", "active": true}
+    ]},
+    "US:AAPL": {"auto_value": "210", "auto_data_date": "2026-11-17"},
+    "TW:2330": {"auto_value": "1500", "auto_data_date": "2026-11-17"}
+  },
+  "fx": {
+    "USD": {"auto_value": "32", "auto_data_date": "2026-11-17", "overrides": [
+      {"value": "31.5", "effective_date": "2026-11-10", "set_at": "2026-11-10T09:00:00+08:00", "active": true}
+    ]},
+    "JPY": {"auto_value": "0.21", "auto_data_date": "2026-11-17"}
+  },
+  "as_of": "2026-11-18",
+  "overview_cases": [
+    {
+      "id": "V01",
+      "desc": "台幣總覽：手動價格與手動匯率優先、跨組合合併、排除未納入總覽的組合、無價格時用最後成交價",
+      "view": "TWD",
+      "drop_fx": [],
+      "expect": {
+        "total_assets": "175650", "invested_current": "169092.5", "historical_invested": "169092.5",
+        "pnl_ex_div": "6557.5", "pnl_inc_div": "6667.75",
+        "return_ex_div": "0.03878055", "return_inc_div": "0.03943256",
+        "missing_fx": [], "estimated_instruments": ["JP:7203"],
+        "rows": {
+          "TW:0050": {"quantity": "300", "avg_cost": "143.53666667", "price": "155", "price_source": "MANUAL"},
+          "US:AAPL": {"quantity": "10", "avg_cost": "200.1", "price": "210", "price_source": "AUTO"},
+          "JP:7203": {"quantity": "100", "avg_cost": "3000", "price": "3000", "price_source": "LAST_TRADE"}
+        }
+      }
+    },
+    {
+      "id": "V02",
+      "desc": "美元檢視：全部換算成美元",
+      "view": "USD",
+      "drop_fx": [],
+      "expect": {
+        "total_assets": "5576.19047619", "invested_current": "5368.01587302", "historical_invested": "5368.01587302",
+        "pnl_ex_div": "208.17460317", "pnl_inc_div": "211.67460317",
+        "return_ex_div": "0.03878055", "return_inc_div": "0.03943256",
+        "missing_fx": [], "estimated_instruments": ["JP:7203"]
+      }
+    },
+    {
+      "id": "V03",
+      "desc": "T9：缺日幣匯率時，日幣資產不計入 KPI 並列為缺漏",
+      "view": "TWD",
+      "drop_fx": ["JPY"],
+      "expect": {
+        "total_assets": "112650", "invested_current": "106092.5", "historical_invested": "106092.5",
+        "pnl_ex_div": "6557.5", "pnl_inc_div": "6667.75",
+        "return_ex_div": "0.06180927", "return_inc_div": "0.06284846",
+        "missing_fx": ["JPY"], "estimated_instruments": ["JP:7203"]
+      }
+    }
+  ],
+  "resolve_price_cases": [
+    {"id": "R01", "desc": "已停用的手動值不採用", "as_of": "2026-11-18",
+     "input": {"auto_value": "100", "overrides": [{"value": "90", "effective_date": "2026-11-01", "set_at": "2026-11-01T00:00:00Z", "active": false}]},
+     "last_trade_price": "80", "expect": {"value": "100", "source": "AUTO"}},
+    {"id": "R02", "desc": "生效日在 as_of 之後的手動值尚未生效", "as_of": "2026-11-18",
+     "input": {"auto_value": "100", "overrides": [{"value": "90", "effective_date": "2026-11-20", "set_at": "2026-11-18T00:00:00Z", "active": true}]},
+     "last_trade_price": "80", "expect": {"value": "100", "source": "AUTO"}},
+    {"id": "R03", "desc": "同一生效日有兩筆手動值，取設定時間較晚者", "as_of": "2026-11-18",
+     "input": {"auto_value": "100", "overrides": [
+       {"value": "91", "effective_date": "2026-11-01", "set_at": "2026-11-01T09:00:00Z", "active": true},
+       {"value": "92", "effective_date": "2026-11-01", "set_at": "2026-11-01T10:00:00Z", "active": true}]},
+     "last_trade_price": "80", "expect": {"value": "92", "source": "MANUAL"}},
+    {"id": "R04", "desc": "AC-12：自動值更新不影響手動值", "as_of": "2026-11-18",
+     "input": {"auto_value": "999", "overrides": [{"value": "90", "effective_date": "2026-01-01", "set_at": "2026-01-01T00:00:00Z", "active": true}]},
+     "last_trade_price": null, "expect": {"value": "90", "source": "MANUAL"}},
+    {"id": "R05", "desc": "沒有任何價格", "as_of": "2026-11-18", "input": null, "last_trade_price": null, "expect": {"value": null, "source": "NONE"}}
+  ]
+}

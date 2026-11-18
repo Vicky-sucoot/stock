@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "note": "日曆中的 holidays 是測試用的固定資料，不代表官方休市表。",
+  "calendars": {
+    "TEST_TW": {
+      "holidays": [
+        "2026-01-01",
+        "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20",
+        "2026-02-27",
+        "2026-10-05",
+        "2027-01-01",
+        "2027-03-01"
+      ],
+      "known_through": "2027-12-31"
+    }
+  },
+  "due_cases": [
+    {
+      "id": "S01",
+      "desc": "每月 31 日，2027 年 2 月取月底 2/28（週日），再順延；3/1 為測試休市日，落在 3/2",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [31], "start_date": "2027-02-01", "holiday_rule": "NEXT_TRADING_DAY"},
+      "today": "2027-03-05",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2027-02#31", "nominal_date": "2027-02-28", "scheduled_date": "2027-03-02", "adjust_reasons": ["MONTH_END", "HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S02",
+      "desc": "每月 6 日遇週六順延至週一",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [6], "start_date": "2027-03-01"},
+      "today": "2027-03-10",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2027-03#6", "nominal_date": "2027-03-06", "scheduled_date": "2027-03-08", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S03",
+      "desc": "T1：閏年 2028/2 每月 29、30、31 日都落在 2/29，三期合併",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [29, 30, 31], "start_date": "2028-02-01"},
+      "today": "2028-02-29",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2028-02#29", "nominal_date": "2028-02-29", "scheduled_date": "2028-02-29", "adjust_reasons": ["MERGED"], "merged_keys": ["2028-02#30", "2028-02#31"]},
+        {"period_key": "2028-02#30", "nominal_date": "2028-02-29", "scheduled_date": "2028-02-29", "adjust_reasons": ["MONTH_END", "MERGED"], "merged_keys": ["2028-02#29", "2028-02#31"]},
+        {"period_key": "2028-02#31", "nominal_date": "2028-02-29", "scheduled_date": "2028-02-29", "adjust_reasons": ["MONTH_END", "MERGED"], "merged_keys": ["2028-02#29", "2028-02#30"]}
+      ]
+    },
+    {
+      "id": "S04",
+      "desc": "T2：1/31（週六）跨月順延到 2/2，期別仍為 1 月；2 月那期（2/28 → 3/2）尚未到期",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [31], "start_date": "2026-01-01"},
+      "today": "2026-02-28",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-01#31", "nominal_date": "2026-01-31", "scheduled_date": "2026-02-02", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S05",
+      "desc": "T3：每週一與週二；週一休市順延到週二，與週二那期合併",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "WEEKLY", "weekdays": [1, 2], "start_date": "2026-10-05"},
+      "today": "2026-10-07",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-W41#1", "nominal_date": "2026-10-05", "scheduled_date": "2026-10-06", "adjust_reasons": ["HOLIDAY_FORWARD", "MERGED"], "merged_keys": ["2026-W41#2"]},
+        {"period_key": "2026-W41#2", "nominal_date": "2026-10-06", "scheduled_date": "2026-10-06", "adjust_reasons": ["MERGED"], "merged_keys": ["2026-W41#1"]}
+      ]
+    },
+    {
+      "id": "S06",
+      "desc": "提前規則：11/1（週日）提前到 10/30（週五），在 10/30 當天就到期",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [1], "start_date": "2026-10-15", "holiday_rule": "PREV_TRADING_DAY"},
+      "today": "2026-10-30",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-11#1", "nominal_date": "2026-11-01", "scheduled_date": "2026-10-30", "adjust_reasons": ["HOLIDAY_BACKWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S07",
+      "desc": "AC-5：漏開 App 後補產生，已存在的期別不重複",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [6, 16, 26], "start_date": "2026-09-01"},
+      "today": "2026-10-20",
+      "existing_keys": ["2026-09#6"],
+      "expect": [
+        {"period_key": "2026-09#16", "nominal_date": "2026-09-16", "scheduled_date": "2026-09-16", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2026-09#26", "nominal_date": "2026-09-26", "scheduled_date": "2026-09-28", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []},
+        {"period_key": "2026-10#6", "nominal_date": "2026-10-06", "scheduled_date": "2026-10-06", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2026-10#16", "nominal_date": "2026-10-16", "scheduled_date": "2026-10-16", "adjust_reasons": [], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S08",
+      "desc": "暫停中的計畫不產生",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [6], "start_date": "2026-09-01", "paused": true},
+      "today": "2026-10-20",
+      "existing_keys": [],
+      "expect": []
+    },
+    {
+      "id": "S09",
+      "desc": "指定日期；1/1 休市順延到 1/4",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "DATES", "specific_dates": ["2026-12-25", "2027-01-01"], "start_date": "2026-12-01"},
+      "today": "2027-01-05",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "D2026-12-25", "nominal_date": "2026-12-25", "scheduled_date": "2026-12-25", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "D2027-01-01", "nominal_date": "2027-01-01", "scheduled_date": "2027-01-04", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S10",
+      "desc": "結束日之後不產生；2/15（週日）連續跨過長假順延到 2/23",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [15], "start_date": "2026-01-01", "end_date": "2026-03-01"},
+      "today": "2026-06-01",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-01#15", "nominal_date": "2026-01-15", "scheduled_date": "2026-01-15", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2026-02#15", "nominal_date": "2026-02-15", "scheduled_date": "2026-02-23", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S11",
+      "desc": "每週五跨年：2027/1/1 屬 ISO 2026-W53，順延到 2027/1/4",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "WEEKLY", "weekdays": [5], "start_date": "2026-12-21"},
+      "today": "2027-01-05",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-W52#5", "nominal_date": "2026-12-25", "scheduled_date": "2026-12-25", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2026-W53#5", "nominal_date": "2027-01-01", "scheduled_date": "2027-01-04", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []}
+      ]
+    },
+    {
+      "id": "S12",
+      "desc": "since 參數：只補產生 since 之後的名義日（例如計畫恢復日）",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [6, 16, 26], "start_date": "2026-09-01"},
+      "today": "2026-10-20",
+      "since": "2026-10-01",
+      "existing_keys": [],
+      "expect": [
+        {"period_key": "2026-10#6", "nominal_date": "2026-10-06", "scheduled_date": "2026-10-06", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2026-10#16", "nominal_date": "2026-10-16", "scheduled_date": "2026-10-16", "adjust_reasons": [], "merged_keys": []}
+      ]
+    }
+  ],
+  "upcoming_cases": [
+    {
+      "id": "U01",
+      "desc": "編輯畫面預覽接下來 3 期（docs/03 §3.3 範例）",
+      "calendar": "TEST_TW",
+      "plan": {"frequency": "MONTHLY", "month_days": [1], "start_date": "2026-11-01"},
+      "today": "2026-11-18",
+      "count": 3,
+      "expect": [
+        {"period_key": "2026-12#1", "nominal_date": "2026-12-01", "scheduled_date": "2026-12-01", "adjust_reasons": [], "merged_keys": []},
+        {"period_key": "2027-01#1", "nominal_date": "2027-01-01", "scheduled_date": "2027-01-04", "adjust_reasons": ["HOLIDAY_FORWARD"], "merged_keys": []},
+        {"period_key": "2027-02#1", "nominal_date": "2027-02-01", "scheduled_date": "2027-02-01", "adjust_reasons": [], "merged_keys": []}
+      ]
+    }
+  ],
+  "market_today_cases": [
+    {"id": "T01", "desc": "T4：台灣週二早上 09:00 時，美東仍是週一", "market": "US", "now_utc": "2026-11-17T01:00:00Z", "expect": "2026-11-16"},
+    {"id": "T02", "desc": "同一時刻台灣已是週二", "market": "TW", "now_utc": "2026-11-17T01:00:00Z", "expect": "2026-11-17"},
+    {"id": "T03", "desc": "日本時間跨日", "market": "JP", "now_utc": "2026-11-17T15:30:00Z", "expect": "2026-11-18"},
+    {"id": "T04", "desc": "美東夏令時間（EDT，UTC-4）", "market": "US", "now_utc": "2026-07-01T03:30:00Z", "expect": "2026-06-30"}
+  ]
+}
