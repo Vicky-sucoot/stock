@@ -436,9 +436,12 @@ public final class PortfolioBook {
         for q in quotes {
             guard let inst = d.instruments.first(where: { $0.market == q.market && $0.symbol == q.symbol }) else { continue }
             let key = inst.id.uuidString
-            if let old = d.priceCache[key], let od = LocalDate(iso: old.dataDate), od > q.dataDate { continue }
-            d.priceCache[key] = CacheEntry(value: Dec(q.close), dataDate: q.dataDate.iso, sourceId: q.sourceId,
-                                           sourceURL: q.sourceURL, attribution: q.attribution, fetchedAt: t)
+            // 較舊的資料日不覆蓋目前快取，但仍記入歷史（月損益圖需要）
+            let older = d.priceCache[key].flatMap { LocalDate(iso: $0.dataDate) }.map { $0 > q.dataDate } ?? false
+            if !older {
+                d.priceCache[key] = CacheEntry(value: Dec(q.close), dataDate: q.dataDate.iso, sourceId: q.sourceId,
+                                               sourceURL: q.sourceURL, attribution: q.attribution, fetchedAt: t)
+            }
             var hist = d.priceHistory[key] ?? []
             hist.removeAll { $0.date == q.dataDate.iso }
             hist.append(HistoryPoint(date: q.dataDate.iso, value: Dec(q.close)))

@@ -122,6 +122,7 @@ final class PasscodeManagerTests: XCTestCase {
         Dictionary(uniqueKeysWithValues: p.challengeGroups.map { ($0, p.recoveryCode.groups[$0].lowercased()) })
     }
 
+    @discardableResult
     func setup(_ pin: String = "2580") throws -> PendingCredentials {
         let p = try mgr.beginSetup(passcode: pin, confirm: pin)
         try mgr.completeSetup(p, challengeAnswers: answers(p), dataLossAcknowledged: true)
