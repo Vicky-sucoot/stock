@@ -1,0 +1,42 @@
+# XcodeGen 設定：在 Mac 上執行 `brew install xcodegen && cd ios/App && xcodegen` 產生 DCAApp.xcodeproj
+name: DCAApp
+options:
+  # 請改成你自己的 bundle ID 前綴（Apple Developer 帳號底下）
+  bundleIdPrefix: com.example.dca
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: zh-Hant
+packages:
+  DCAKit:
+    path: ../DCAKit
+targets:
+  DCAApp:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: DCAKit
+        product: DCAKit
+      - package: DCAKit
+        product: DCASecurity
+      - sdk: Charts.framework
+      - sdk: LocalAuthentication.framework
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: 定期定額
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleLocalizations: [zh-Hant]
+        NSFaceIDUsageDescription: 使用 Face ID 快速解鎖（選用，可隨時在設定中關閉）
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.dca.app
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
