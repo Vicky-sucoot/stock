@@ -14,3 +14,10 @@ xcuserdata/
 DerivedData/
 
 .DS_Store
+
+# web
+web/node_modules/
+web/dist/
+web/dev-dist/
+web/public/data/
+web/test-results/

@@ -1,0 +1,1 @@
+{"root":["./src/app/book.ts","./src/app/security.ts","./src/app/storage.ts","./src/core/date.ts","./src/core/decimal.ts","./src/core/ledger.ts","./src/core/schedule.ts","./src/core/snapshots.ts","./src/core/valuation.ts","./test/book.test.ts","./test/security.test.ts","./test/shared-cases.test.ts"],"version":"5.6.3"}
