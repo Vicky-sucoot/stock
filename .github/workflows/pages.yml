@@ -79,3 +79,23 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # 部署後檢查線上網址真的是 App，而不是 GitHub 依 README 自動產生的 Jekyll 頁面。
+  # 若失敗：到 GitHub Settings → Pages → Build and deployment → Source 改選「GitHub Actions」。
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the live site serves the app
+        run: |
+          url="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          for i in $(seq 1 12); do
+            body=$(curl -fsS "$url" || true)
+            if echo "$body" | grep -q '<div id="root">' && curl -fsS -o /dev/null "${url}sw.js"; then
+              echo "OK: $url serves the app"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::$url 不是 App（可能是 README 的 Jekyll 頁面）。請到 Settings → Pages → Source 改選「GitHub Actions」，再重新執行此 workflow。"
+          exit 1

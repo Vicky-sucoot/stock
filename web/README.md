@@ -8,6 +8,12 @@
 - 資料：`src/app/book.ts`，存在瀏覽器的 IndexedDB；不上傳、不備份、不匯出
 - 行情：每天由 GitHub Actions 從證交所與櫃買中心 OpenAPI 擷取，產生同站的 `data/quotes.json`（官方 API 不允許瀏覽器跨站讀取，所以不直接呼叫）
 
+## 疑難排解：打開後仍是舊版（例如仍要求設定密碼）
+1. **確認 GitHub Pages 的來源**：倉庫的 Settings → Pages → Build and deployment → Source 必須是「**GitHub Actions**」。若設成「Deploy from a branch」，GitHub 會把 README 發布成網頁，蓋掉 App，手機上快取的舊版也無法更新（`sw.js` 會變成 404）。`pages` workflow 的 `verify` 步驟會檢查這件事
+2. 改好後重新執行 `pages` workflow（Actions → pages → Run workflow）
+3. 在 iPhone 上把 App 完全關閉，重新開啟一到兩次；App 會自動下載新版
+4. 若仍是舊版，才考慮刪除主畫面圖示並清除 Safari 的網站資料——**這會刪除本機所有投資資料**，請先確認沒有重要紀錄
+
 ## 開發與測試
 ```bash
 cd web && npm ci && npm test
