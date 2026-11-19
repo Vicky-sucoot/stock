@@ -3,7 +3,7 @@ import { useApp } from "./ui/model";
 import { PortfolioDetail, PortfolioEdit, PortfolioList } from "./ui/portfolio";
 import { ConfirmOccurrence, PendingList, PlanEdit } from "./ui/plan";
 import { go, useRoute } from "./ui/router";
-import { LockScreen, Onboarding } from "./ui/security";
+import { Onboarding } from "./ui/onboarding";
 import { ManualValue, Settings, Sources, WatchPlaceholder } from "./ui/settings";
 import { InstrumentDetail, TxEdit } from "./ui/tx";
 
@@ -42,8 +42,7 @@ export default function App() {
     <>
       {phase === "loading" && <div className="page"><main><p className="muted center">載入中…</p></main></div>}
       {phase === "onboarding" && <Onboarding />}
-      {phase === "locked" && <LockScreen />}
-      {phase === "unlocked" && (
+      {phase === "ready" && (
         <>
           <Screen r={r} />
           <nav className="tabs">

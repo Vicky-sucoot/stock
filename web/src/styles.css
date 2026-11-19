@@ -67,16 +67,6 @@ main { padding: 8px 16px 16px; max-width: 640px; margin: 0 auto; }
 .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
 .tabs button { flex: 1; border: 0; background: none; padding: 12px 0; font-size: 13px; color: var(--muted); cursor: pointer; }
 .tabs button.on { color: var(--accent); font-weight: 700; }
-.pad { text-align: center; padding-top: 24px; }
-.pad h2 { font-size: 20px; margin: 0 0 8px; }
-.pad.disabled { opacity: .5; }
-.dots { display: flex; justify-content: center; gap: 18px; margin: 20px 0 28px; }
-.dots span { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--text); }
-.dots span.on { background: var(--text); }
-.keys { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px 24px; justify-content: center; }
-.keys button { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--line); font-size: 26px; cursor: pointer; }
-.lock { display: flex; flex-direction: column; align-items: center; }
-.recovery { font: 600 20px/1.4 ui-monospace, Menlo, monospace; text-align: center; letter-spacing: 1px; padding: 12px; background: var(--bg); border-radius: 10px; overflow-wrap: anywhere; user-select: all; }
 .bullets { padding-left: 20px; }
 .chart { width: 100%; height: auto; display: block; }
 .chart .value { fill: none; stroke: var(--accent); stroke-width: 2; }

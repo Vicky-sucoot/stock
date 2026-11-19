@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { parseDecimal } from "../app/book";
 import { back } from "./router";
 
@@ -64,35 +64,6 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
       {options.map(([v, l]) => (
         <button key={v} role="radio" aria-checked={v === value} className={v === value ? "on" : ""} onClick={() => onChange(v)}>{l}</button>
       ))}
-    </div>
-  );
-}
-
-/** 4 位數密碼輸入（4 個圓點與數字鍵盤） */
-export function PasscodePad({ title, subtitle, disabled, onComplete }: { title: string; subtitle?: string | null; disabled?: boolean; onComplete: (pin: string) => void }) {
-  const [pin, setPin] = useState("");
-  // 第 4 碼輸入後立即送出並清空，下一次輸入不會被吃掉
-  const press = (k: string) => {
-    if (k === "⌫") return setPin((p) => p.slice(0, -1));
-    const next = pin + k;
-    if (next.length < 4) return setPin(next);
-    setPin("");
-    onComplete(next);
-  };
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
-  return (
-    <div className={`pad ${disabled ? "disabled" : ""}`}>
-      <h2>{title}</h2>
-      {subtitle && <p className="muted center" role="status">{subtitle}</p>}
-      <div className="dots" aria-label={`已輸入 ${pin.length} 位`}>
-        {[0, 1, 2, 3].map((i) => <span key={i} className={i < pin.length ? "on" : ""} />)}
-      </div>
-      <div className="keys">
-        {keys.map((k, i) =>
-          k === "" ? <span key={i} /> : (
-            <button key={i} disabled={disabled} aria-label={k === "⌫" ? "刪除" : k} onClick={() => press(k)}>{k}</button>
-          ))}
-      </div>
     </div>
   );
 }

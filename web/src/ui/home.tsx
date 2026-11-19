@@ -71,7 +71,8 @@ function Kpis({ ov }: { ov: Overview }) {
   const { view, includeDividends, setIncludeDividends } = useApp();
   const pnl = includeDividends ? ov.pnlIncDiv : ov.pnlExDiv;
   const ret = includeDividends ? ov.returnIncDiv : ov.returnExDiv;
-  const tone = (v: { isNegative(): boolean } | null) => (v && v.isNegative() ? "down" : "up");
+  // 台股慣例紅漲綠跌；零為中性
+  const tone = (v: { isNegative(): boolean; isZero(): boolean } | null) => (!v || v.isZero() ? "" : v.isNegative() ? "down" : "up");
   return (
     <Section>
       <p className="muted">總資產</p>

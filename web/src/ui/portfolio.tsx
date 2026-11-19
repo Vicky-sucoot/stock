@@ -5,7 +5,7 @@ import { D } from "../core/decimal";
 import { buildPosition, avgCost } from "../core/ledger";
 import { Field, Page, Row, Section, Segmented, Tag } from "./components";
 import { money, num, pct, qty, shortDate, TX_NAME } from "./fmt";
-import { describeError, useApp } from "./model";
+import { useApp } from "./model";
 import { back, go } from "./router";
 
 const COLORS = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6", "#6B7280"];
@@ -53,9 +53,9 @@ export function PortfolioEdit({ id }: { id?: string }) {
 }
 
 export function PortfolioDetail({ id }: { id: string }) {
-  const { book, rev, run, passcode, setError } = useApp();
+  const { book, rev, run, setError } = useApp();
   const [tab, setTab] = useState<"hold" | "plan" | "tx">("hold");
-  const [delPin, setDelPin] = useState<string | null>(null);
+  const [delName, setDelName] = useState<string | null>(null);
   void rev;
   const p: Portfolio | undefined = book!.data.portfolios.find((x) => x.id === id);
   const holdings = useMemo(() => {
@@ -113,20 +113,19 @@ export function PortfolioDetail({ id }: { id: string }) {
       )}
       <Section>
         <button className="link" onClick={() => run((b) => b.setArchived(id, !p.archivedAt))}>{p.archivedAt ? "取消封存" : "封存"}</button>
-        {delPin === null ? (
-          <button className="link danger" onClick={() => setDelPin("")}>刪除組合</button>
+        {delName === null ? (
+          <button className="link danger" onClick={() => setDelName("")}>刪除組合</button>
         ) : (
           <>
             <p className="warn">會一併刪除這個組合的計畫與交易紀錄。資料只存在本機，刪除後無法還原。</p>
-            <Field label="輸入 App 密碼確認"><input type="password" inputMode="numeric" value={delPin} onChange={(e) => setDelPin(e.target.value)} aria-label="刪除確認密碼" /></Field>
+            <Field label={`請輸入組合名稱「${p.name}」確認`}><input value={delName} onChange={(e) => setDelName(e.target.value)} aria-label="刪除確認名稱" /></Field>
             <button className="danger" onClick={async () => {
-              try {
-                await passcode.unlock(delPin);
-                if ((await run((b) => b.deletePortfolio(id))) !== undefined) go("portfolios");
-              } catch (e) {
-                setError(describeError(e));
+              if (delName.trim() !== p.name) {
+                setError("名稱不符，未刪除任何資料");
+              } else if ((await run((b) => b.deletePortfolio(id))) !== undefined) {
+                go("portfolios");
               }
-              setDelPin(null);
+              setDelName(null);
             }}>確認刪除</button>
           </>
         )}

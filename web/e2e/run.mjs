@@ -33,29 +33,18 @@ const shot = (n) => page.screenshot({ path: `${shots}/${n}.png`, fullPage: true 
 
 try {
   await page.goto(URL);
-  // --- 首次設定 ---
-  await page.getByRole("button", { name: "下一步", exact: true }).click();
-  await pin("1234");
-  check(await page.getByText("密碼太簡單").waitFor().then(() => true, () => false), "rejects weak passcode 1234");
-  await pin("2580");
-  await pin("2580");
-  const code = (await page.getByTestId("recovery-code").textContent()).trim();
-  check(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){4}$/.test(code), `recovery code shown: ${code}`);
-  await shot("01-recovery-code");
-  await page.getByRole("button", { name: "我已抄好，下一步", exact: true }).click();
-  const groups = code.split("-");
-  for (const box of await page.getByLabel(/第 \d 組/).all()) {
-    const n = Number((await box.getAttribute("aria-label")).match(/\d/)[0]);
-    await box.fill(groups[n - 1].toLowerCase());
-  }
-  const confirmBtn = page.getByRole("button", { name: "確認", exact: true });
-  check(await confirmBtn.isDisabled(), "confirm disabled until data-loss acknowledged");
-  await page.getByRole("checkbox").check();
-  await confirmBtn.click();
+  // --- 首次使用：不設定密碼；必須勾選資料保存說明 ---
+  const start = page.getByRole("button", { name: "開始使用" });
+  await start.waitFor();
+  const setupText = await page.locator("main").innerText();
+  check(!/設定.*密碼|復原碼|Face ID/.test(setupText) && setupText.includes("開啟 App 不需要密碼"),
+        "onboarding has no passcode setup, recovery code or Face ID");
+  check(await start.isDisabled(), "start disabled until data-loss acknowledged");
+  await page.getByLabel("資料保存說明").check();
   await page.getByLabel("投資組合名稱").fill("長期投資");
-  await page.getByRole("button", { name: "完成", exact: true }).click();
+  await start.click();
   await page.getByText("總覽", { exact: true }).waitFor();
-  await shot("02-home-empty");
+  await shot("01-home-empty");
   check(await page.getByText("目前沒有待確認的期數").isVisible(), "home shows plan card first");
 
   // --- 新增定期定額（補產生） ---
@@ -104,39 +93,29 @@ try {
   check(usd.startsWith("US$"), `USD view: ${usd}`);
   await page.getByRole("radio", { name: "台幣 TWD" }).click();
 
-  // --- 重新開啟需解鎖；錯誤密碼 ---
+  // --- 重新開啟：直接進入首頁，不需要密碼；資料保留 ---
   await page.reload();
-  await page.getByText("輸入 App 密碼").waitFor();
-  await pin("1111");
-  await page.getByText("密碼錯誤").waitFor();
-  check(true, "wrong passcode rejected");
-  await pin("2580");
   await page.getByTestId("total-assets").waitFor();
-  check((await page.getByTestId("total-assets").textContent()) === total, "data persisted across reload");
-
-  // --- 用復原碼重設密碼，資料不變 ---
-  await page.reload();
-  await page.getByText("忘記密碼？使用復原碼").click();
-  await page.getByLabel("復原碼").fill(code.toLowerCase());
-  await page.getByLabel("新密碼", { exact: true }).fill("1357");
-  await page.getByLabel("再輸入新密碼").fill("1357");
-  await page.getByRole("button", { name: "驗證並繼續", exact: true }).click();
-  const newCode = (await page.getByTestId("recovery-code").textContent()).trim();
-  check(newCode !== code, "new recovery code generated");
-  await page.getByRole("button", { name: "我已抄好，下一步", exact: true }).click();
-  const g2 = newCode.split("-");
-  for (const box of await page.getByLabel(/第 \d 組/).all()) {
-    const n = Number((await box.getAttribute("aria-label")).match(/\d/)[0]);
-    await box.fill(g2[n - 1]);
-  }
-  await page.getByRole("button", { name: "確認", exact: true }).click();
-  await page.getByTestId("total-assets").waitFor();
-  check((await page.getByTestId("total-assets").textContent()) === total, "investment data intact after passcode reset");
-  await page.reload();
-  await pin("1357");
-  await page.getByTestId("total-assets").waitFor();
-  check(true, "new passcode works");
+  check((await page.getByTestId("total-assets").textContent()) === total, "reopen goes straight to home with data intact");
+  check(!(await page.getByText(/輸入 App 密碼/).count()), "no lock screen after reload");
   await shot("06-home-final");
+
+  // --- 刪除組合需輸入正確名稱 ---
+  await page.getByRole("button", { name: "組合", exact: true }).click();
+  await page.getByRole("button", { name: /長期投資/ }).click();
+  await page.getByRole("button", { name: "刪除組合" }).click();
+  await page.getByLabel("刪除確認名稱").fill("錯誤名稱");
+  await page.getByRole("button", { name: "確認刪除" }).click();
+  check(await page.getByText("名稱不符，未刪除任何資料").isVisible(), "wrong name does not delete");
+  await page.getByRole("button", { name: "好" }).click();
+
+  // --- 清除全部資料後回到首次使用 ---
+  await page.getByRole("button", { name: "設定", exact: true }).click();
+  await page.getByRole("button", { name: "清除所有資料並重新開始" }).click();
+  await page.getByLabel("清除確認文字").fill("清除全部資料");
+  await page.getByRole("button", { name: "清除", exact: true }).click();
+  await page.getByRole("button", { name: "開始使用" }).waitFor();
+  check(true, "wipe returns to onboarding");
 
   // --- 版面：沒有水平捲動 ---
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

@@ -1,15 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BookError, PortfolioBook } from "../app/book";
 import { fetchQuotes, listing, snapshots, type Listing, type QuotesFile } from "../app/quotes";
-import { PasscodeError, PasscodeManager } from "../app/security";
 import { idbStore, requestPersistence, type KV } from "../app/storage";
 
-export type Phase = "loading" | "onboarding" | "locked" | "unlocked";
+export type Phase = "loading" | "onboarding" | "ready";
+
+/** 使用者已勾選資料保存說明（首次設定完成）的標記 */
+export const ACK_KEY = "onboarding.ack.v1";
+/** 舊版密碼鎖的安全狀態；密碼鎖已依使用者決定關閉，啟動時清除 */
+const LEGACY_SECURITY_KEY = "security.state.v1";
+export const WIPE_TEXT = "清除全部資料";
 
 interface Ctx {
   phase: Phase;
   book: PortfolioBook | null;
-  passcode: PasscodeManager;
   rev: number;
   view: "TWD" | "USD";
   setView: (v: "TWD" | "USD") => void;
@@ -19,8 +23,8 @@ interface Ctx {
   setError: (e: string | null) => void;
   /** 執行修改；成功時回傳結果（無回傳值的動作回傳 true），失敗時顯示錯誤並回傳 undefined */
   run: <T>(fn: (b: PortfolioBook) => Promise<T>) => Promise<T | true | undefined>;
-  unlocked: () => void;
-  lock: () => void;
+  /** 首次設定：記錄已了解資料保存方式，並建立第一個投資組合 */
+  completeOnboarding: (portfolioName: string) => Promise<boolean>;
   refresh: (force?: boolean) => Promise<void>;
   refreshing: boolean;
   refreshError: string | null;
@@ -35,20 +39,6 @@ export const useApp = () => useContext(C)!;
 
 export function describeError(e: unknown): string {
   if (e instanceof BookError) return e.message;
-  if (e instanceof PasscodeError) {
-    switch (e.code) {
-      case "NOT_FOUR_DIGITS": return "密碼需為 4 位數字";
-      case "TOO_SIMPLE": return "密碼太簡單（例如 0000、1234），請換一組";
-      case "MISMATCH": return "兩次輸入的密碼不同";
-      case "WRONG_PASSCODE": return "密碼錯誤";
-      case "WRONG_RECOVERY_CODE": return `復原碼不正確（第 ${e.detail} 次）`;
-      case "INVALID_RECOVERY_FORMAT": return "復原碼格式不正確（應為 20 個英數字）";
-      case "LOCKED": return `嘗試次數過多，請於 ${e.detail} 秒後再試`;
-      case "CHALLENGE_FAILED": return "復原碼核對失敗";
-      case "DATA_LOSS_NOT_ACKNOWLEDGED": return "請先勾選資料保存說明";
-      default: return e.code;
-    }
-  }
   return e instanceof Error ? e.message : String(e);
 }
 
@@ -69,7 +59,6 @@ const savePref = (k: string, v: unknown) => {
 };
 
 export function AppProvider({ children, kv = idbStore, quotesUrl = "data/quotes.json" }: { children: ReactNode; kv?: KV; quotesUrl?: string }) {
-  const passcode = useMemo(() => new PasscodeManager(kv), [kv]);
   const [phase, setPhase] = useState<Phase>("loading");
   const [book, setBook] = useState<PortfolioBook | null>(null);
   const [rev, setRev] = useState(0);
@@ -80,18 +69,20 @@ export function AppProvider({ children, kv = idbStore, quotesUrl = "data/quotes.
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<QuotesFile | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
-  const hiddenAt = useRef<number | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        setBook(await PortfolioBook.open(kv));
-        setPhase((await passcode.isConfigured()) ? "locked" : "onboarding");
+        const b = await PortfolioBook.open(kv);
+        await kv.del(LEGACY_SECURITY_KEY);
+        setBook(b);
+        const done = (await kv.get<boolean>(ACK_KEY)) || b.data.portfolios.length > 0;
+        setPhase(done ? "ready" : "onboarding");
       } catch (e) {
         setError(`無法讀取本機資料：${describeError(e)}`);
       }
     })();
-  }, [kv, passcode]);
+  }, [kv]);
 
   const run = useCallback(async <T,>(fn: (b: PortfolioBook) => Promise<T>) => {
     if (!book) return undefined;
@@ -130,29 +121,17 @@ export function AppProvider({ children, kv = idbStore, quotesUrl = "data/quotes.
     }
   }, [book, quotes, quotesUrl]);
 
-  const unlocked = useCallback(() => {
-    setPhase("unlocked");
-    requestPersistence().then(setPersisted).catch(() => setPersisted(null));
-    if (book) book.generatePending().then(() => setRev((x) => x + 1)).catch((e) => setError(describeError(e)));
-    refresh(false);
-  }, [book, refresh]);
-
-  // 切到背景時記錄時間；回來時超過設定秒數就重新上鎖（docs/10 §4）
+  // 進入 App 時：請求持久儲存、補產生待確認期數、更新行情（不需要密碼）
   useEffect(() => {
-    const onVis = async () => {
-      if (document.visibilityState === "hidden") hiddenAt.current = Date.now();
-      else if (phase === "unlocked" && hiddenAt.current !== null) {
-        const s = await passcode.state();
-        if ((Date.now() - hiddenAt.current) / 1000 >= (s?.relockAfterSeconds ?? 60)) setPhase("locked");
-        hiddenAt.current = null;
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [phase, passcode]);
+    if (phase !== "ready" || !book) return;
+    requestPersistence().then(setPersisted).catch(() => setPersisted(null));
+    book.generatePending().then(() => setRev((x) => x + 1)).catch((e) => setError(describeError(e)));
+    refresh(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, book]);
 
   const value: Ctx = {
-    phase, book, passcode, rev, view, includeDividends, error, setError, run, unlocked, refresh, refreshing, refreshError, quotes, persisted,
+    phase, book, rev, view, includeDividends, error, setError, run, refresh, refreshing, refreshError, quotes, persisted,
     listingRows: useMemo(() => (quotes ? listing(quotes) : []), [quotes]),
     setView: (v) => {
       setViewState(v);
@@ -162,10 +141,23 @@ export function AppProvider({ children, kv = idbStore, quotesUrl = "data/quotes.
       setIncDivState(v);
       savePref("incDiv", v);
     },
-    lock: () => setPhase("locked"),
+    completeOnboarding: async (name) => {
+      if (!book) return false;
+      try {
+        await book.createPortfolio(name);
+        await kv.set(ACK_KEY, true);
+        setRev((x) => x + 1);
+        setPhase("ready");
+        return true;
+      } catch (e) {
+        setError(describeError(e));
+        return false;
+      }
+    },
     wipe: async (confirmation) => {
-      if (!(await passcode.wipe(confirmation))) return false;
+      if (confirmation !== WIPE_TEXT) return false;
       await book?.wipeAll();
+      await kv.del(ACK_KEY);
       setRev((x) => x + 1);
       setPhase("onboarding");
       return true;

@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fxKey, parseDecimal } from "../app/book";
-import { WIPE_TEXT } from "../app/security";
-import { DecimalInput, Field, Page, Section, Segmented } from "./components";
+import { DecimalInput, Field, Page, Section } from "./components";
 import { localToday } from "./fmt";
-import { useApp } from "./model";
+import { useApp, WIPE_TEXT } from "./model";
 import { back, go } from "./router";
-import { RegenerateRecovery } from "./security";
 
 /** 手動設定價格、淨值或匯率：持續有效，直到使用者再次修改或改回自動（docs/05 §3） */
 export function ManualValue({ kind, id }: { kind: "price" | "fx"; id: string }) {
@@ -33,28 +31,17 @@ export function ManualValue({ kind, id }: { kind: "price" | "fx"; id: string }) 
 }
 
 export function Settings() {
-  const { passcode, wipe, setError, persisted } = useApp();
-  const [regen, setRegen] = useState(false);
-  const [relock, setRelock] = useState("60");
+  const { wipe, setError, persisted } = useApp();
   const [wipeText, setWipeText] = useState<string | null>(null);
-  useEffect(() => {
-    passcode.state().then((s) => s && setRelock(String(s.relockAfterSeconds)));
-  }, [passcode]);
-  if (regen) return <Page title="重新產生復原碼" onBack><RegenerateRecovery onDone={() => setRegen(false)} /></Page>;
   return (
     <Page title="設定">
-      <Section title="安全">
-        <button className="link" onClick={() => setRegen(true)}>重新產生復原碼</button>
-        <p className="muted">離開多久後需重新解鎖</p>
-        <Segmented label="重新上鎖時間" value={relock} onChange={async (v) => { setRelock(v); await passcode.setRelockAfter(Number(v)); }}
-          options={[["0", "立即"], ["60", "1 分鐘"], ["300", "5 分鐘"]]} />
-      </Section>
       <Section title="資料來源與聲明">
         <button className="link" onClick={() => go("sources")}>資料來源</button>
         <p className="foot">本 App 只用於規劃與記錄，不連接券商、不下單、不扣款。所提供的資訊不構成投資建議，不保證準確或獲利。</p>
       </Section>
       <Section title="安全與資料">
-        <p className="foot">資料只存在這支手機的瀏覽器中，不做雲端備份、不提供匯出。刪除這個網頁 App、清除 Safari 的網站資料、換手機，或同時遺失密碼與復原碼時，資料無法找回。</p>
+        <p className="foot">資料只存在這支手機的瀏覽器中，不做雲端備份、不提供匯出。刪除這個網頁 App、清除 Safari 的網站資料或換手機時，資料無法找回。</p>
+        <p className="foot">開啟 App 不需要密碼（依使用者設定關閉），請自行保管好手機。</p>
         <p className="foot">建議以 Safari「分享 → 加入主畫面」安裝後使用。持久儲存：{persisted === true ? "已啟用" : persisted === false ? "瀏覽器未同意（請加入主畫面後再開啟）" : "未知"}</p>
         {wipeText === null ? <button className="link danger" onClick={() => setWipeText("")}>清除所有資料並重新開始</button> : (
           <>
