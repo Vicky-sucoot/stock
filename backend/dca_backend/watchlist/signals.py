@@ -158,10 +158,11 @@ class Assessment:
 
 
 def assess(item_id: int, symbol: str, company: str, subject: str, description: str | None,
-           llm: LLMClassifier | None) -> Assessment:
+           llm: LLMClassifier | None, llm_first: bool = False) -> Assessment:
+    """`llm_first=True`（使用者決定以 Claude 判定訊息情緒）：規則已判定也交給 Claude，規則只做交叉檢查與備援。"""
     rule = classify_rule(subject, description)
     one = Decimal(1)
-    if rule.decided:
+    if rule.decided and not (llm_first and llm is not None):
         return Assessment(item_id, symbol, rule.polarity, rule.confidence, one, "RULE", rule.rationale, rule.negation)
     if llm is None:
         # 規則無法確定、又沒有 LLM：中性，不計分
@@ -169,8 +170,9 @@ def assess(item_id: int, symbol: str, company: str, subject: str, description: s
                           ["RULE_UNDECIDED"])
     j = llm.classify(symbol, company, subject, description)
     if j is None:
-        return Assessment(item_id, symbol, 0, rule.confidence, one, "RULE", rule.rationale, rule.negation,
-                          ["LLM_FAILED"], llm.model, llm.prompt_version)
+        # Claude 失敗：規則已判定時沿用規則結果，否則中性
+        return Assessment(item_id, symbol, rule.polarity if rule.decided else 0, rule.confidence, one, "RULE",
+                          rule.rationale, rule.negation, ["LLM_FAILED"], llm.model, llm.prompt_version)
     flags: list[str] = []
     polarity, confidence = j.polarity, j.confidence
     # 規則有傾向而與 LLM 相反：取 0（docs/06 §3.2-5）

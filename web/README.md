@@ -32,4 +32,4 @@ cd backend && python -m dca_backend.export_quotes --raw-dir <data 分支>/raw --
 | 資料保存 | 瀏覽器 IndexedDB，並請求「持久儲存」 | 刪除主畫面圖示、清除 Safari 網站資料、換手機時資料會消失；**務必以「加入主畫面」方式使用**，降低被系統清除的機會 |
 | 開啟密碼、Face ID | 不提供（依使用者決定關閉） | 以手機本身的鎖屏保護 |
 | 美股、日股、基金、匯率 | 手動輸入 | 沒有可在網頁中免費且符合授權的自動來源 |
-| 觀察名單 | 不顯示 | 資料需累積 20 個交易日，且公開發布前需法遵確認（倉庫與網站皆為公開） |
+| 每日名單（名單分頁） | 建議買入／建議賣出／訊號衝突 | 以通關密語加密發布、只給自己看；需 GitHub Secret `WATCHLIST_PASSPHRASE`，設定 `ANTHROPIC_API_KEY` 時由 Claude 評分（docs/06 §8） |

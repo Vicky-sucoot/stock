@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 
-RULE_VERSION = "2026.11-draft2"
+RULE_VERSION = "2026.11-draft3"
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,9 @@ class Params:
     list_threshold: int = 25
     max_entries: int = 10
     max_uncertain: int = 20
+    # Claude 評分（啟用時）：規則外資分 |F| 達此值才送 Claude，最多幾檔
+    llm_min_rule_f: int = 10
+    llm_max_symbols: int = 60
 
     def to_dict(self) -> dict:
         def conv(v):

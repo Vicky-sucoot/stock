@@ -47,6 +47,7 @@ main { padding: 8px 16px 16px; max-width: 640px; margin: 0 auto; }
 .primary { background: var(--accent); color: #fff; }
 .primary:disabled { opacity: .4; }
 .danger { background: var(--danger); color: #fff; }
+.link.danger { background: none; color: var(--danger); padding: 8px 0; margin: 0; width: auto; font-weight: 400; text-align: left; }
 .small { padding: 8px 12px; margin: 0; width: auto; background: var(--line); }
 .primary.small { background: var(--accent); }
 .actions { display: flex; gap: 8px; justify-content: flex-end; padding-bottom: 10px; }

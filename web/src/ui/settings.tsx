@@ -67,14 +67,3 @@ export function Sources() {
     </Page>
   );
 }
-
-export function WatchPlaceholder() {
-  return (
-    <Page title="觀察">
-      <Section title="每日觀察名單">
-        <p>尚未開放。後端正在累積上櫃外資資料與公司重大訊息；需要至少 20 個交易日的資料、規則經人工抽查，並完成公開發布前的法遵確認後才會顯示。</p>
-        <p className="foot">上市股票的個股外資資料目前沒有可合法自動取得的官方來源，只會列為「資料不足」。</p>
-      </Section>
-    </Page>
-  );
-}

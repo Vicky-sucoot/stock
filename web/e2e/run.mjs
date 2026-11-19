@@ -1,4 +1,5 @@
-// 端對端測試：在 Chromium 以 iPhone 尺寸操作完整流程（需先 npm run build，並在 dist/data 放 quotes.json）。
+// 端對端測試：在 Chromium 以 iPhone 尺寸操作完整流程（需先 npm run build，並在 dist/data 放 quotes.json
+// 與 watchlist.enc.json；後者可用 backend 測試資料產生，密語 "correct horse battery"）。
 //   node e2e/run.mjs [截圖目錄]
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -99,6 +100,28 @@ try {
   check((await page.getByTestId("total-assets").textContent()) === total, "reopen goes straight to home with data intact");
   check(!(await page.getByText(/輸入 App 密碼/).count()), "no lock screen after reload");
   await shot("06-home-final");
+
+  // --- 每日名單：輸入通關密語解密（dist/data/watchlist.enc.json，密語 "correct horse battery"） ---
+  await page.getByRole("button", { name: "名單", exact: true }).click();
+  await page.getByLabel("通關密語").fill("wrong passphrase");
+  await page.getByRole("button", { name: "解鎖名單" }).click();
+  check(await page.getByText("通關密語不正確").waitFor().then(() => true, () => false), "wrong passphrase rejected");
+  await page.getByLabel("通關密語").fill("correct horse battery");
+  await page.getByRole("button", { name: "解鎖名單" }).click();
+  await page.getByText(/^建議買入（/).waitFor();
+  const wtext = await page.locator("main").innerText();
+  check(/建議賣出／避開（/.test(wtext) && /訊號衝突／資料不足（/.test(wtext) && wtext.includes("不構成投資建議"),
+        "list labels and disclaimer shown");
+  await shot("07-watchlist");
+  await page.getByText(/^A001 /).first().click();
+  await page.getByText("外資及陸資買賣超（不含自營商）").waitFor();
+  check(await page.getByText("官方來源").isVisible(), "detail shows official source link");
+  await shot("08-watch-detail");
+  await page.reload();
+  await page.getByText("外資及陸資買賣超（不含自營商）").waitFor();
+  check(!(await page.getByLabel("通關密語").count()), "passphrase remembered on this phone after reload");
+  const dtext = await page.locator("main").innerText();
+  check(dtext.includes("Claude") && dtext.includes("規則分"), "detail shows Claude score with rule cross-check");
 
   // --- 刪除組合需輸入正確名稱 ---
   await page.getByRole("button", { name: "組合", exact: true }).click();

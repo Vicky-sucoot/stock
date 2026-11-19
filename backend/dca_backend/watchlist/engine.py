@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Callable
@@ -31,7 +31,7 @@ from ..models import (
 )
 from ..sources import SOURCES
 from .foreign import ForeignInput, ForeignScore, percentile_ranks, score_foreign
-from .llm import classifier_from_env
+from .llm import AnthropicScorer, FlowDay, FlowInput, ForeignJudgement, classifier_from_env, scorer_from_env
 from .params import RULE_VERSION, Params
 from .signals import Assessment, Item, LLMClassifier, NewsScore, assess, cluster, score_news, window
 
@@ -53,6 +53,9 @@ class Candidate:
     flags: list[str] = field(default_factory=list)
     liquidity: Decimal | None = None
     excluded: str | None = None
+    volumes: dict[str, int] = field(default_factory=dict)
+    rule_f: int | None = None
+    claude: ForeignJudgement | None = None
 
     @property
     def f(self) -> int:
@@ -102,14 +105,17 @@ def _flow_dict(r: ForeignFlowDaily) -> dict:
             "raw_payload_id": r.raw_payload_id, "fetched_at": r.fetched_at.isoformat()}
 
 
-def _assessment(s: Session, a: Announcement, llm: LLMClassifier | None, now: datetime) -> Assessment:
+def _assessment(s: Session, a: Announcement, llm: LLMClassifier | None, now: datetime,
+                llm_first: bool = False) -> Assessment:
     """有快取就沿用（同一規則版本），避免重複呼叫 LLM。"""
     cached = s.scalar(select(SignalAssessment).where(SignalAssessment.announcement_id == a.id,
                                                      SignalAssessment.rule_version == RULE_VERSION))
-    if cached is not None and not (llm is not None and cached.method == "RULE" and "RULE_UNDECIDED" in cached.flags):
+    stale = llm is not None and cached is not None and cached.method == "RULE" and (
+        llm_first or "RULE_UNDECIDED" in cached.flags)
+    if cached is not None and not stale:
         return Assessment(a.id, a.symbol, cached.polarity, cached.confidence, cached.relevance, cached.method,
                           cached.rationale, cached.has_negation, json.loads(cached.flags), cached.model, cached.prompt_version)
-    r = assess(a.id, a.symbol, a.company_name, a.subject, a.description, llm)
+    r = assess(a.id, a.symbol, a.company_name, a.subject, a.description, llm, llm_first)
     if cached is not None:
         s.delete(cached)
         s.flush()
@@ -140,7 +146,10 @@ def _reason(c: Candidate) -> str:
 
 def build_watchlist(s: Session, data_date: date | None = None, p: Params = Params(),
                     llm: LLMClassifier | None = None,
-                    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> WatchlistRun:
+                    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+                    scorer: AnthropicScorer | None = None) -> WatchlistRun:
+    """`scorer`（Claude）啟用時：外資分改用 Claude 分數，該批標的的訊息也一律交給 `llm`（Claude）判定；
+    規則分保留作為預先篩選、交叉檢查與失敗時的備援。"""
     started = now()
     board = "TPEX"  # 上市（TWSE）外資來源待查（docs/07 V1）
     if data_date is None:
@@ -150,7 +159,8 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
     s.add(run)
     if data_date is None:
         run.coverage = json.dumps({"foreign_TPEX": False, "foreign_TWSE": False, "announcements": False,
-                                   "licensed_news": False, "llm": llm is not None})
+                                   "licensed_news": False, "llm": llm is not None,
+                                   "llm_foreign": scorer is not None})
         run.stats = json.dumps({"message": "沒有任何外資資料"})
         run.finished_at = now()
         s.commit()
@@ -162,7 +172,8 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
     today_rows = list(s.scalars(select(ForeignFlowDaily).where(ForeignFlowDaily.board == board,
                                                                ForeignFlowDaily.trade_date == data_date)))
     coverage = {"foreign_TPEX": bool(today_rows), "foreign_TWSE": False, "announcements": False,
-                "licensed_news": False, "llm": llm is not None, "history_days": len(days)}
+                "licensed_news": False, "llm": llm is not None, "llm_foreign": scorer is not None,
+                "history_days": len(days)}
 
     cands: dict[str, Candidate] = {}
     # --- 外資 ---
@@ -177,6 +188,7 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
         if direction and streak == len(days) and streak < p.streak_points[0][0]:
             c.flags.append("HISTORY_INSUFFICIENT")
         qs = _quotes(s, r.symbol, data_date, p.liquidity_days)
+        c.volumes = {q.trade_date.isoformat(): q.volume for q in qs if q.volume is not None}
         q_today = qs[0] if qs and qs[0].trade_date == data_date else None
         if q_today is None or q_today.close is None:
             c.flags.append("NO_QUOTE")
@@ -197,6 +209,31 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
             inputs[sym].pct_rank = rank
     for sym, x in inputs.items():
         cands[sym].foreign = score_foreign(x, p)
+        cands[sym].rule_f = cands[sym].foreign.score
+
+    # --- Claude 外資評分（使用者決定 2026-11-19；規則分作為預先篩選與備援） ---
+    claude_symbols: set[str] = set()
+    scorer_calls_before = getattr(scorer, "calls", 0)
+    if scorer is not None:
+        picked = [c for c in cands.values() if c.foreign and c.foreign.direction != 0 and not c.excluded
+                  and "NO_QUOTE" not in c.flags and abs(c.f) >= p.llm_min_rule_f]
+        picked.sort(key=lambda c: (-abs(c.f), -abs(c.foreign.amount or 0), c.symbol))
+        picked = picked[: p.llm_max_symbols]
+        claude_symbols = {c.symbol for c in picked}
+        flow_inputs = [FlowInput(c.symbol, c.name, c.foreign.direction, inputs[c.symbol].close,
+                                 [FlowDay(r["trade_date"], r["fi_net"], c.volumes.get(r["trade_date"])) for r in c.flow_rows],
+                                 c.streak, inputs[c.symbol].pct_rank) for c in picked]
+        judged = scorer.score(flow_inputs) if flow_inputs else {}
+        for c in picked:
+            j = judged.get(c.symbol)
+            if j is None:
+                c.flags.append("LLM_FAILED")
+            elif j.score * c.foreign.direction < 0:
+                c.claude = j
+                c.flags.append("LLM_SIGN_MISMATCH")  # 方向與當日買賣超相反：不採用，沿用規則分
+            else:
+                c.claude = j
+                c.foreign = replace(c.foreign, score=j.score)
 
     # --- 公司重大訊息 ---
     w_start, w_end = window(data_date, prev_day, p)
@@ -214,7 +251,8 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
         if not in_window and sym not in cands:
             continue
         c = cands.setdefault(sym, Candidate(sym, items[0].company_name, items[0].board))
-        assessed = {a.id: _assessment(s, a, llm, started) for a in in_window}
+        llm_first = sym in claude_symbols
+        assessed = {a.id: _assessment(s, a, llm, started, llm_first) for a in in_window}
         clusters = cluster([Item(a.id, a.symbol, a.subject, a.published_at) for a in in_window], p)
         reps = [assessed[cl[0].item_id] for cl in clusters]
         c.news = score_news(reps, p)
@@ -289,6 +327,8 @@ def build_watchlist(s: Session, data_date: date | None = None, p: Params = Param
         "PARTIAL" if coverage["foreign_TPEX"] else "FAILED")
     run.stats = json.dumps({"candidates": len(cands), "matched": counts, "announcements": len(anns),
                             "llm_calls": getattr(llm, "calls", 0) - llm_calls_before,
+                            "llm_foreign_calls": getattr(scorer, "calls", 0) - scorer_calls_before,
+                            "llm_foreign_symbols": len(claude_symbols),
                             "window": [w_start.isoformat(), w_end.isoformat()]}, ensure_ascii=False)
     run.finished_at = now()
     s.commit()
@@ -303,7 +343,11 @@ def _evidence(c: Candidate, p: Params) -> dict:
             "amount_estimated": None if fs.amount is None else str(fs.amount),
             "amount_note": "以收盤價估算（本 App 估算，非官方數值）",
             "ratio_of_volume": None if fs.ratio is None else str(fs.ratio),
-            "S1_consecutive": fs.s1, "S2_big_day": fs.s2, "S3_size": fs.s3, "F": fs.score,
+            "S1_consecutive": fs.s1, "S2_big_day": fs.s2, "S3_size": fs.s3, "F": fs.score, "rule_F": c.rule_f,
+            "method": "CLAUDE" if c.claude is not None and "LLM_SIGN_MISMATCH" not in c.flags else "RULE",
+            "claude": None if c.claude is None else {
+                "score": c.claude.score, "confidence": str(c.claude.confidence), "reason": c.claude.reason,
+                "model": AnthropicScorer.model, "prompt_version": AnthropicScorer.prompt_version},
             "avg_turnover": None if c.liquidity is None else str(c.liquidity),
         },
         "news": None if c.news is None else {
@@ -344,7 +388,7 @@ def main(argv: list[str] | None = None) -> int:
         create_all(engine)
     sf: sessionmaker[Session] = make_session_factory(engine)
     with sf() as s:
-        run = build_watchlist(s, args.date, llm=classifier_from_env())
+        run = build_watchlist(s, args.date, llm=classifier_from_env(), scorer=scorer_from_env())
         out = export_run(s, run.run_id)
     print(f"watchlist {out['data_date']}: {out['status']} {out['stats'].get('matched')}")
     targets = [args.export] if args.export else []

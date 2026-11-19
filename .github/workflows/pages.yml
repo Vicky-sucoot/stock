@@ -1,7 +1,9 @@
 name: pages
 
 # 免費發布網頁版 App（PWA）到 GitHub Pages：https://<帳號>.github.io/stock/
-# 內含最新的官方收盤價檔（政府開放資料，附來源標示）；**不含觀察名單、不含任何個人資料**。
+# 內含最新的官方收盤價檔（政府開放資料，附來源標示）；不含任何個人資料。
+# 每日名單（建議買入／建議賣出）只以使用者的通關密語加密後發布（Secret WATCHLIST_PASSPHRASE）；
+# 沒設定密語就不產生。設定 Secret ANTHROPIC_API_KEY 時，外資動向與訊息情緒改由 Claude 評分。
 on:
   push:
     branches: [main]
@@ -51,6 +53,25 @@ jobs:
           else
             echo "no data branch yet; app will show manual prices only"
           fi
+
+      - name: Build encrypted daily list (private)
+        working-directory: backend
+        env:
+          DCA_DB_URL: sqlite:///${{ runner.temp }}/replay.db
+          WATCHLIST_PASSPHRASE: ${{ secrets.WATCHLIST_PASSPHRASE }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$WATCHLIST_PASSPHRASE" ]; then echo "WATCHLIST_PASSPHRASE not set: no list published"; exit 0; fi
+          if [ ! -d ../data-branch/raw ]; then echo "no data yet"; exit 0; fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            pip install -e ".[llm]"
+            export DCA_LLM_ENABLED=1
+          fi
+          # 上一版（輸入沒變時沿用，避免同一天重複呼叫 Claude）
+          url="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/data/watchlist.enc.json"
+          curl -fsS "$url" -o "${{ runner.temp }}/prev.json" || true
+          python -m dca_backend.replay --raw-dir ../data-branch/raw --init-db
+          python -m dca_backend.watchlist.publish --out ../web/public/data/watchlist.enc.json --previous "${{ runner.temp }}/prev.json"
 
       - uses: actions/setup-node@v4
         with:

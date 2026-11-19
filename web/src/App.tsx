@@ -4,7 +4,8 @@ import { PortfolioDetail, PortfolioEdit, PortfolioList } from "./ui/portfolio";
 import { ConfirmOccurrence, PendingList, PlanEdit } from "./ui/plan";
 import { go, useRoute } from "./ui/router";
 import { Onboarding } from "./ui/onboarding";
-import { ManualValue, Settings, Sources, WatchPlaceholder } from "./ui/settings";
+import { ManualValue, Settings, Sources } from "./ui/settings";
+import { Watch, WatchItem } from "./ui/watch";
 import { InstrumentDetail, TxEdit } from "./ui/tx";
 
 function Screen({ r }: { r: string[] }) {
@@ -23,7 +24,8 @@ function Screen({ r }: { r: string[] }) {
     case "fx-help": return <FxHelp />;
     case "settings": return <Settings />;
     case "sources": return <Sources />;
-    case "watch": return <WatchPlaceholder />;
+    case "watch": return <Watch />;
+    case "watch-item": return <WatchItem symbol={r[1]} />;
     default: return <Home />;
   }
 }
@@ -31,7 +33,7 @@ function Screen({ r }: { r: string[] }) {
 const TABS: [string, string, string[]][] = [
   ["home", "首頁", ["home", "pending", "confirm", "fx-help", "manual"]],
   ["portfolios", "組合", ["portfolios", "portfolio", "portfolio-new", "portfolio-edit", "plan", "tx-new", "tx", "instrument"]],
-  ["watch", "觀察", ["watch"]],
+  ["watch", "名單", ["watch", "watch-item"]],
   ["settings", "設定", ["settings", "sources"]],
 ];
 
