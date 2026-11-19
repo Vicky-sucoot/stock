@@ -21,3 +21,4 @@ web/dist/
 web/dev-dist/
 web/public/data/
 web/test-results/
+web/*.tsbuildinfo
